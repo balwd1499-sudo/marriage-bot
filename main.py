@@ -1,69 +1,79 @@
-import os, json, threading
+import os,json,threading
 from flask import Flask
-from telegram import Update
+import telegram.ext as te
 from telegram import ReplyKeyboardMarkup
-from telegram.ext import *
-TOKEN = os.getenv("BOT_TOKEN")
-web = Flask(__name__)
-AGE, LOC, BIO = range(3)
-FILE = "data.json"
-def load():
- if os.path.exists(FILE):
-  with open(FILE,'r',encoding='utf-8') as f:
-   try: return json.load(f)
-   except: pass
+
+T=os.getenv("BOT_TOKEN")
+W=Flask(__name__)
+A,L,B=range(3)
+F="data.json"
+
+def ld():
+ if os.path.exists(F):
+  try:
+   return json.load(open(F,'r',encoding='utf-8'))
+  except: pass
  return {"brides":[],"grooms":[]}
-def save(d):
- with open(FILE,'w',encoding='utf-8') as f:
-  json.dump(d,f,ensure_ascii=False,indent=2)
-@web.route('/')
-def home(): return "Bot OK"
-def run_web():
- p=int(os.environ.get("PORT",10000))
- web.run(host='0.0.0.0',port=p)
-async def start(upd,ctx):
- kb=[["👰 عروس","🤵 عريس"],["🔍 بحث"]]
- mk=ReplyKeyboardMarkup(kb,resize_keyboard=True)
- await upd.message.reply_text("Welcome",reply_markup=mk)
-async def ask_type(upd,ctx):
- t=upd.message.text
- if "بحث" in t: return await do_search(upd,ctx)
- if "عروس" in t: ctx.user_data['t']='brides'
- else: ctx.user_data['t']='grooms'
- await upd.message.reply_text("كم العمر؟")
- return AGE
-async def ask_age(upd,ctx):
- ctx.user_data['a']=upd.message.text
- await upd.message.reply_text("السكن وين؟")
- return LOC
-async def ask_loc(upd,ctx):
- ctx.user_data['l']=upd.message.text
- await upd.message.reply_text("نبذة قصيرة")
- return BIO
-async def save_bio(upd,ctx):
- d=load()
- e={"age":ctx.user_data['a'],"loc":ctx.user_data['l'],"bio":upd.message.text,"name":upd.effective_user.first_name}
- d[ctx.user_data['t']].append(e)
- save(d)
- await upd.message.reply_text("✅ تم الحفظ!")
- return ConversationHandler.END
-async def do_search(upd,ctx):
- d=load()
- if not d['brides'] and not d['grooms']:
-  await upd.message.reply_text("لسه مافي بيانات")
-  return ConversationHandler.END
- m="👰 عرايس:\n"
- for b in d['brides'][-5:]: m+=f"{b['age']} - {b['loc']} - {b['bio']}\n"
- m+="\n🤵 عرسان:\n"
- for g in d['grooms'][-5:]: m+=f"{g['age']} - {g['loc']} - {g['bio']}\n"
- await upd.message.reply_text(m)
- return ConversationHandler.END
+
+def sv(d):
+ json.dump(d,open(F,'w',encoding='utf-8'),ensure_ascii=False,indent=2)
+
+@W.route('/')
+def h(): return "OK"
+
+def rw():
+ W.run(host='0.0.0.0',port=int(os.getenv("PORT",10000)))
+
+async def st(u,c):
+ k=[["عروس","عريس"],["بحث"]]
+ m=ReplyKeyboardMarkup(k,resize_keyboard=True)
+ await u.message.reply_text("مرحبا",reply_markup=m)
+
+async def ty(u,c):
+ t=u.message.text
+ if "بحث" in t:
+  return await sh(u,c)
+ if "عروس" in t: c.user_data['t']="brides"
+ else: c.user_data['t']="grooms"
+ await u.message.reply_text("كم العمر؟")
+ return A
+
+async def ag(u,c):
+ c.user_data['a']=u.message.text
+ await u.message.reply_text("السكن؟")
+ return L
+
+async def lo(u,c):
+ c.user_data['l']=u.message.text
+ await u.message.reply_text("نبذة؟")
+ return B
+
+async def bi(u,c):
+ d=ld()
+ e={"age":c.user_data['a'],"loc":c.user_data['l'],"bio":u.message.text}
+ d[c.user_data['t']].append(e)
+ sv(d)
+ await u.message.reply_text("تم الحفظ")
+ return te.ConversationHandler.END
+
+async def sh(u,c):
+ d=ld()
+ if not d["brides"] and not d["grooms"]:
+  await u.message.reply_text("فاضي")
+  return te.ConversationHandler.END
+ s=""
+ for x in d["brides"][-3:]: s+=f"{x['age']}-{x['loc']}\n"
+ for x in d["grooms"][-3:]: s+=f"{x['age']}-{x['loc']}\n"
+ await u.message.reply_text(s or "فاضي")
+ return te.ConversationHandler.END
+
 def main():
- threading.Thread(target=run_web,daemon=True).start()
- app=Application.builder().token(TOKEN).build()
- conv=ConversationHandler(entry_points=[MessageHandler(filters.Regex("عروس|عريس"),ask_type)],states={AGE:[MessageHandler(filters.TEXT,ask_age)],LOC:[MessageHandler(filters.TEXT,ask_loc)],BIO:[MessageHandler(filters.TEXT,save_bio)]},fallbacks=[])
- app.add_handler(CommandHandler("start",start))
- app.add_handler(conv)
- app.add_handler(MessageHandler(filters.Regex("بحث"),do_search))
- app.run_polling()
+ threading.Thread(target=rw,daemon=True).start()
+ a=te.Application.builder().token(T).build()
+ cv=te.ConversationHandler(entry_points=[te.MessageHandler(te.filters.Regex("عروس|عريس"),ty)],states={A:[te.MessageHandler(te.filters.TEXT,ag)],L:[te.MessageHandler(te.filters.TEXT,lo)],B:[te.MessageHandler(te.filters.TEXT,bi)]},fallbacks=[])
+ a.add_handler(te.CommandHandler("start",st))
+ a.add_handler(cv)
+ a.add_handler(te.MessageHandler(te.filters.Regex("بحث"),sh))
+ a.run_polling()
+
 if __name__=="__main__": main()
