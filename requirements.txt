@@ -1,2 +1,2 @@
-flask==2.3.3
+Flask
 python-telegram-bot==20.7
